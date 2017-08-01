@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<head lang="zh-cn">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<meta http-equiv="X-UA-Compatible" content="IE=edge, chrome=1"/>
+<meta name="renderer" content="webkit"/>
+<title>测试副本</title>
+<link href="https://cdn.bootcss.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.bootcss.com/font-awesome/4.7.0/css/font-awesome.min.css" rel="stylesheet">
+<!-- 分页 -->
+<style type="text/css">
+#pagecount{
+    text-align: center;
+    padding: 20px 0;
+}
+.turn-go{
+    text-align: center;
+}
+</style>
+<script src="https://cdn.bootcss.com/jquery/1.12.4/jquery.min.js"></script>
+<script src="https://cdn.bootcss.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+</head>
+<body>
+
+<div id="app">
+    <table class="table table-border">
+        <thead>
+            <tr>
+                <th>aId</th>
+                <th>cId</th>
+                <th>developer</th>
+                <th>download</th> 
+                <th>icon</th>  
+                <th>name</th>
+                <th>orders</th>
+                <th>price</th>
+            </tr>
+        </thead>
+        <tbody id="data"></tbody>
+    </table>
+</div>
+<!--分页开始-->
+<div id="list"> 
+    <ul></ul> 
+</div> 
+<div id="pagecount"></div>
+<div class="turn-go">
+    <input type="text" maxlength="8" value="1" id="fy_n">
+    <span>页
+        <input type="submit" name="btnGo" value="Go" id="go">
+    </span>
+</div>
+<!--分页结束--> 
+
+<script type="text/javascript">
+//加载token
+//token地址为  http://beta.open.api.vrseen.net/token/get
+//从接口获取数据 
+//接口为 http://beta.store.api.vrseen.net/appcategory/list
+
+// 获取token
+var getToken = function(){
+    //判断是否存在token
+    if(sessionStorage.getItem("token") != null){
+        // 转换成对象后返回
+        return JSON.parse(sessionStorage.getItem("token"));
+    }
+    var token = null;
+    $.ajax({
+        url:"http://beta.open.api.vrseen.net/token/get",
+        type:"GET",
+        dataType:"JSON",
+        async:false,
+        success:function(data){
+            //转换成json字符串，把token写入本地
+            sessionStorage.setItem("token",JSON.stringify(data.data));
+            token = data.data;
+        }
+    });
+    return token;
+}
+
+// 获取数据写入数据
+$(function(page){
+    var token = getToken();
+    // 获取数据写入页面
+    // $.ajax({
+    //     url:"http://beta.store.api.vrseen.net/app/list",
+    //     type:"POST",
+    //     headers:{
+    //         "Token-Key":token.TokenKey,
+    //         "Token-Value":token.TokenValue
+    //     },
+    //     data:{
+    //         page:page
+    //     },
+    //     dataType:"JSON",
+    //     success:function(data){
+    //         // console.log(data);
+    //         //console.log(data.data)
+    //         if(data.code == "SUCCESS"){
+    //             var  html  = "";
+    //             // console.log(data.data.lists);
+    //             for(var i  =0;i < data.data.lists.length;i++){
+    //                 var d = data.data.lists[i];
+    //                 var img = "<img  width='200' height='200' src='"+d.icon+"'/>";
+    //                 html +="<tr><td>"+ d.aId+"</td><td>"+ d.cId+"</td><td>"+ d.developer+"</td><td>"+ d.download+"</td><td>"+img+"</td><td>"+ d.name+"</td><td>"+ d.orders+"</td><td>"+ d.price+"</td></tr>";
+    //             }
+    //             // console.log(html);
+    //             $("#data").html(html);
+    //         }
+    //     }
+    // })
+
+    // 分页
+    var curPage = 1; //当前页
+    getData();
+    // 获取数据
+    function getData(page){
+            $.ajax({
+            url:"http://beta.store.api.vrseen.net/app/list",
+            type:"POST",
+            headers:{
+                "Token-Key":token.TokenKey,
+                "Token-Value":token.TokenValue
+            },
+            data:{
+                page:page
+            },
+            dataType:"JSON",
+            beforeSend:function(){ 
+                $("#list ul").append("<li id='loading'>loading...</li>");//显示加载动画 
+            }, 
+            success:function(data){
+                var zys = Math.ceil(data.data.page.total_pages);//总页数 34页
+                var total = Math.ceil(data.data.page.last/7);//总页数 34页 ,显示条数
+                var current = Number(data.data.page.current); //当前页数
+                $("#list ul").empty();//清空数据区 
+                curPage = current; //当前页 
+                totalPage = zys; //显示页数
+                // var li = ""; 
+                // $.each(list,function(data){ //遍历json数据列 
+                //     li += "<li><a href='#'>"+total+"</a></li>"; 
+                //     //console.log(data)
+                // });
+                // $("#list ul").append(li);
+                // console.log(data.data.page.total_pages)
+                //console.log(current)
+                if(data.code == "SUCCESS"){
+                var  html  = "";
+                    for(var i  =0;i < data.data.lists.length;i++){
+                        var d = data.data.lists[i];
+                        var img = "<img  width='200' height='200' src='"+d.icon+"'/>";
+                        html +="<tr><td>"+ d.aId+"</td><td>"+ d.cId+"</td><td>"+ d.developer+"</td><td>"+ d.download+"</td><td>"+img+"</td><td>"+ d.name+"</td><td>"+ d.orders+"</td><td>"+ d.price+"</td></tr>";
+                    }
+                    // console.log(html);
+                    $("#data").html(html);
+                }
+            },
+            
+            complete:function(){ //生成分页条 
+                getPageBar();
+                newdata(); 
+                go();
+            }, 
+            error:function(){ 
+                alert("数据加载失败"); 
+            } 
+
+        });
+    }
+    //获取分页条
+    function getPageBar(){
+        //页码大于最大页数 
+        if(curPage>totalPage) curPage=totalPage; 
+         //页码小于1 
+        if(curPage<1) curPage=1;
+        // 显示内容 当前页和总页数
+        pageStr = "<span>当前页：</span><span>"+curPage 
+        +"/"+totalPage+"</span>";
+        //如果是第一页 
+        if(curPage==1){ 
+            pageStr += "<span>首页</span><span>上一页</span>"; 
+        }else{ 
+            pageStr += "<span><a href='javascript:void(0)' rel='1'>首页</a></span><span><a href='javascript:void(0)' rel='"+(curPage-1)+"'>上一页</a></span>"; 
+        }
+         //如果是最后页 
+        if(curPage>=totalPage){ 
+            pageStr += "<span>下一页</span><span>尾页</span>"; 
+        }else{ 
+            pageStr += "<span><a href='javascript:void(0)' rel='"+(parseInt(curPage)+1)+"'> 下一页</a></span><span><a href='javascript:void(0)' rel='"+totalPage+"'>尾页</a></span>"; 
+        } 
+        $("#pagecount").html(pageStr);  
+    }
+    // 更新数据
+    function newdata(){
+        $("#pagecount span a").on('click',function(){ 
+            var rel = $(this).attr("rel"); 
+            if(rel){ 
+                getData(rel); 
+                $("#fy_n").val(rel);
+            } 
+        });  
+    }
+    // 跳转功能
+    function go(){
+        $("#go").on('click',function(){ 
+            var value = $('#fy_n').val(); 
+            //console.log(value);
+            if(value){
+                getData(value);
+            }
+        }); 
+    }
+})
+
+</script>
+</body>
+</html>
